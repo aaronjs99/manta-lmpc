@@ -1,15 +1,26 @@
-"""Experiments / manta / lmpc."""
+"""Run, checkpoint, resume, and report the Manta APF/LMPC workflow."""
 
 from __future__ import annotations
 
 from datetime import datetime
+import json
 from pathlib import Path
+import sys
 from typing import TYPE_CHECKING
 
+import yaml
+
 from scripts.cli.arguments.manta.lmpc import parse_args
-from scripts.configuration.manta import load_project_config, override_project_config
+from scripts.configuration.manta import (
+    load_project_config,
+    override_project_config,
+    project_config_to_mapping,
+)
+from scripts.configuration.paths import DEFAULT_CONFIG_PATH, resolve_config_path
+from scripts.experiments.manta.run_directory import claim_run_directory
 from scripts.experiments.manta.runner import run_manta_lmpc
-from scripts.reporting.manta import save_manta_run_report
+from scripts.reporting.manta import save_manta_progress_summary, save_manta_run_report
+from scripts.storage.manta import load_manta_checkpoint, save_manta_checkpoint
 
 if TYPE_CHECKING:
     import argparse
@@ -18,53 +29,156 @@ if TYPE_CHECKING:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Run APF/LMPC from YAML config and save all diagnostics."""
+    """Run simulations locally; user input errors have actionable CLI messages."""
     args = parse_args(argv)
-    project_config = _load_effective_config(args)
-    scenario = project_config.scenario
-    lmpc_config = project_config.lmpc
-    apf_config = project_config.apf
+    try:
+        _execute(args)
+    except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as exc:
+        print(f"manta: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def _execute(args: argparse.Namespace) -> None:
+    resume_path = None
+    checkpoint = None
+    if args.resume:
+        source = Path(args.resume).resolve()
+        resume_path = source / "checkpoint.npz" if source.is_dir() else source
+        checkpoint = load_manta_checkpoint(resume_path)
+    config = _load_effective_config(args, checkpoint.config if checkpoint else None)
+    if checkpoint and config.lmpc.iterations < checkpoint.result.completed_iterations:
+        raise ValueError(
+            "--iterations cannot be smaller than the completed iteration count"
+        )
     root = (
         Path(args.output_dir)
         if args.output_dir
-        else project_config.output.root_dir
-        / f"{project_config.output.run_prefix}_{timestamp}"
+        else resume_path.parent
+        if resume_path
+        else config.output.root_dir
+        / f"{config.output.run_prefix}_{datetime.now():%Y%m%d_%H%M%S_%f}"
+    ).resolve()
+    config_path = (
+        resolve_config_path(args.config or DEFAULT_CONFIG_PATH)
+        if args.config or checkpoint is None
+        else resume_path
     )
-    root.mkdir(parents=True, exist_ok=True)
-    stop_path = _resolve_stop_file(args.stop_file)
-    if stop_path.exists():
-        stop_path.unlink()
+    stop_path = Path(args.stop_file).resolve() if args.stop_file else root / "STOP_RUN"
+    checkpoint_path = root / "checkpoint.npz"
+    last_completed = checkpoint.result if checkpoint else None
 
-    try:
-        result = run_manta_lmpc(
-            scenario,
-            config=lmpc_config,
-            apf_config=apf_config,
-            dynamics_config=project_config.dynamics,
-            should_stop=stop_path.exists,
-            verbose=not project_config.quiet,
-        )
-    except KeyboardInterrupt:
-        if stop_path.exists():
-            stop_path.unlink()
-        print("Stopped manta LMPC run.")
-        raise SystemExit(130) from None
+    with claim_run_directory(root, resume_path=resume_path):
+        # The initial read locates the destination. Re-read under its lock so
+        # an in-place writer finishing between those operations cannot be lost.
+        if checkpoint is not None and root == resume_path.parent:
+            checkpoint = load_manta_checkpoint(resume_path)
+            config = _load_effective_config(args, checkpoint.config)
+            if config.lmpc.iterations < checkpoint.result.completed_iterations:
+                raise ValueError(
+                    "--iterations cannot be smaller than the completed iteration count"
+                )
+            last_completed = checkpoint.result
 
-    save_manta_run_report(
-        root,
-        result,
-        project_config,
-        config_path=args.config,
-    )
+        def completed(result):
+            nonlocal last_completed
+            save_manta_checkpoint(checkpoint_path, result, config)
+            last_completed = result
+            save_manta_progress_summary(
+                root, result, config, config_path=config_path, run_status="running"
+            )
+            if not config.quiet:
+                print(
+                    f"Saved checkpoint after iteration {result.completed_iterations}: {checkpoint_path}"
+                )
+
+        if not config.quiet:
+            print(f"Run directory: {root}\nStop signal: {stop_path}")
+        try:
+            if checkpoint is not None:
+                # Persist a changed target and an imported seed before the
+                # first new solve, including resumes into another directory.
+                completed(last_completed)
+            result = run_manta_lmpc(
+                config.scenario,
+                config=config.lmpc,
+                apf_config=config.apf,
+                dynamics_config=config.dynamics,
+                should_stop=stop_path.exists,
+                resume_result=last_completed,
+                on_iteration_completed=completed,
+                verbose=not config.quiet,
+            )
+            # Also handles a resume with no new iterations or a new destination.
+            save_manta_checkpoint(checkpoint_path, result, config)
+            last_completed = result
+            save_manta_progress_summary(
+                root, result, config, config_path=config_path, run_status="reporting"
+            )
+            save_manta_run_report(root, result, config, config_path=config_path)
+        except KeyboardInterrupt:
+            _record_stopped_run(
+                root, last_completed, config, config_path, "interrupted"
+            )
+            print("Stopped manta LMPC run.")
+            if last_completed is not None and checkpoint_path.exists():
+                print(
+                    f"Retained iterations 0 through {last_completed.completed_iterations}. "
+                    f'Resume with: python run.py --resume "{root}"'
+                )
+            else:
+                print("No completed APF seed is available yet; rerun to start again.")
+            raise SystemExit(130) from None
+        except Exception:
+            _record_stopped_run(root, last_completed, config, config_path, "failed")
+            raise
+
+    validation = result.validation_by_iteration[
+        result.selected_iteration if result.selected_iteration is not None else -1
+    ]
     print(f"Saved manta LMPC outputs to: {root}")
+    print(
+        f"Completed LMPC iterations: {result.completed_iterations}/{config.lmpc.iterations}; "
+        f"selected iteration: {result.selected_iteration}; "
+        f"valid trajectory: {validation.valid}; solver clean: {validation.solver_clean}"
+    )
 
 
-def _load_effective_config(args: argparse.Namespace) -> ProjectConfig:
-    """Load YAML config, then apply explicit CLI overrides."""
-    config = load_project_config(args.config, scenario_name=args.scenario)
-    return override_project_config(
+def _record_stopped_run(root, result, config, config_path, status):
+    if result is not None and (root / "checkpoint.npz").exists():
+        try:
+            save_manta_progress_summary(
+                root, result, config, config_path=config_path, run_status=status
+            )
+        except (OSError, ValueError) as exc:
+            print(
+                f"Could not update progress summary: {exc}. "
+                "The previous checkpoint is retained.",
+                file=sys.stderr,
+            )
+
+
+def _load_effective_config(
+    args: argparse.Namespace,
+    stored: ProjectConfig | None = None,
+) -> ProjectConfig:
+    """Resume from saved settings; numerical changes require a separate run."""
+    config = (
+        stored
+        if stored is not None and args.config is None
+        else load_project_config(
+            args.config or DEFAULT_CONFIG_PATH,
+            scenario_name=args.scenario or (stored.scenario.name if stored else None),
+        )
+    )
+    if (
+        stored is not None
+        and args.scenario is not None
+        and args.scenario != stored.scenario.name
+    ):
+        raise ValueError(
+            "--scenario differs from the checkpoint; start a new run instead"
+        )
+    config = override_project_config(
         config,
         lmpc={
             "iterations": args.iterations,
@@ -78,10 +192,23 @@ def _load_effective_config(args: argparse.Namespace) -> ProjectConfig:
         make_video=args.make_video,
         quiet=args.quiet,
     )
-
-
-def _resolve_stop_file(path: str | Path) -> Path:
-    stop_path = Path(path)
-    if not stop_path.is_absolute():
-        stop_path = Path.cwd() / stop_path
-    return stop_path
+    if stored is not None:
+        previous = project_config_to_mapping(stored)
+        current = project_config_to_mapping(config)
+        changed = []
+        for section in ("scenario", "dynamics", "apf", "lmpc"):
+            old_values, new_values = previous[section].copy(), current[section].copy()
+            if section == "lmpc":
+                old_values.pop("iterations")
+                new_values.pop("iterations")
+            if json.dumps(old_values, sort_keys=True) != json.dumps(
+                new_values, sort_keys=True
+            ):
+                changed.append(section)
+        if changed:
+            raise ValueError(
+                f"resume settings differ in {', '.join(changed)}. "
+                "Only the iteration target, output, verbosity, and video may change; "
+                "start a new run for numerical changes."
+            )
+    return config

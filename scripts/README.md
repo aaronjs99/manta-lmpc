@@ -36,6 +36,7 @@ meaning: relative to the invoking working directory.
 | `metrics/` | Scoring, paired statistics, confirmation gates |
 | `plotting/` | Figures and animations from computed data |
 | `reporting/` | Artifact serialization and presentation |
+| `storage/` | Versioned, atomic Manta checkpoint persistence |
 
 Algorithms do not depend on launchers, experiment execution, plotting, or
 reporting. Metrics do not import experiment launchers. Plotting does not execute

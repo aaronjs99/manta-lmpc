@@ -96,6 +96,13 @@ invoking working directory.
 
 ## Verification Boundary
 
+Manta run persistence lives in `scripts/storage/`; the learning runner exposes
+completed-iteration callbacks and accepts retained run results without doing
+filesystem I/O. `metrics/manta/learning.py` validates archive shapes and
+recomputes admission from trajectories. CLI orchestration owns output-directory
+reservation, stop signals, archived-setting compatibility, and progress reports.
+See [recoverable runs](manta_runs.md) for the supported workflow.
+
 A structural refactor is not a new research result. Compare syntax, imports,
 command options, representative numerical results and artifact generation without
 overwriting `results/latest/`. Temporary verification material stays outside the

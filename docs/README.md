@@ -1,6 +1,7 @@
 # Documentation
 
 - [Code architecture](code_architecture.md): ownership, entry points and migration map.
+- [Recoverable Manta runs](manta_runs.md): checkpoints, resume, cancellation, and output safety.
 - [Research contributions](research_contributions.md): scope and saved evidence.
 - [Heterogeneous harbor](heterogeneous_harbor.md): studies and experiment commands.
 - [Harbor dynamics](harbor_dynamics.md): equations, parameters and fidelity limits.

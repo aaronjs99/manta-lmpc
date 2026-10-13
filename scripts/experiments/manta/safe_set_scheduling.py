@@ -20,6 +20,8 @@ from scripts.experiments.manta.safe_set_scoring import (
 from scripts.simulation.manta_autopilot import simulate_manta_autopilot_with_controls
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from scripts.contracts.manta import Scenario
 
 
@@ -29,6 +31,7 @@ def build_staggered_safe_sets(
     dt: float,
     apf_config: APFConfig = APFConfig(),
     dynamics_config: MantaDynamicsConfig = MantaDynamicsConfig(),
+    should_stop: Callable[[], bool] | None = None,
 ) -> tuple[dict[int, np.ndarray], dict[int, np.ndarray]]:
     """Build staged APF safe sets and their corresponding controls."""
     starts = np.asarray(scenario.starts, dtype=float)
@@ -42,6 +45,8 @@ def build_staggered_safe_sets(
     candidates = []
     for radius_scale in apf_config.static_agent_radius_scales:
         for order in permutations(range(num_agents)):
+            if should_stop is not None and should_stop():
+                raise KeyboardInterrupt
             (
                 safe_sets,
                 safe_controls,
@@ -76,6 +81,8 @@ def build_staggered_safe_sets(
     ):
         compact_candidates = []
         for candidate in candidates[: apf_config.compact_staging_candidates]:
+            if should_stop is not None and should_stop():
+                raise KeyboardInterrupt
             score, _, _, staged_trajs, staged_controls = candidate
             if not score.usable_for_learning:
                 continue

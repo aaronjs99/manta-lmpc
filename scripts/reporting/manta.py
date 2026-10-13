@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import csv
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 from scripts.metrics.manta.report import MantaRunReport, prepare_manta_report
+from scripts.reporting.json import write_json
 from scripts.plotting.manta import (
     plot_cost_decrease,
     plot_learning_progression,
@@ -36,8 +36,6 @@ def save_manta_run_report(
     lmpc = project_config.lmpc
     apf = project_config.apf
 
-    with (root / "summary.json").open("w", encoding="utf-8") as file:
-        json.dump(report.summary, file, indent=2)
     _save_histories_csv(root / "states_by_iteration.csv", result.histories, lmpc.dt)
     plot_learning_progression(
         report.report_histories,
@@ -86,7 +84,32 @@ def save_manta_run_report(
             safety_distance=scenario.safety_distance,
             statuses=result.final_statuses,
         )
+    report.summary["run_status"] = "completed"
+    report.summary["artifacts"] = {
+        "state_history": "states_by_iteration.csv",
+        "learning_plot": "learning_progression.png",
+        "cost_plot": "cost_decrease.png",
+        "trajectory_plot": "final_trajectories.png",
+        "separation_plot": "pairwise_distances.png",
+        "animation": "final_iteration.gif" if project_config.make_video else None,
+    }
+    write_json(root / "summary.json", report.summary, atomic=True)
     return report
+
+
+def save_manta_progress_summary(
+    output_dir: str | Path,
+    result: MantaLMPCRunResult,
+    project_config: ProjectConfig,
+    *,
+    config_path: str | Path,
+    run_status: str,
+) -> None:
+    """Save inspectable progress without rendering plots on every iteration."""
+    report = prepare_manta_report(result, project_config, config_path=config_path)
+    report.summary["run_status"] = run_status
+    report.summary["artifacts"] = {}
+    write_json(Path(output_dir) / "summary.json", report.summary, atomic=True)
 
 
 def _save_histories_csv(

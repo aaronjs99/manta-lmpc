@@ -4,15 +4,28 @@ from __future__ import annotations
 
 import argparse
 
-from scripts.configuration.paths import DEFAULT_CONFIG_PATH
-
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse CLI overrides for the YAML-backed manta LMPC run."""
     parser = argparse.ArgumentParser(description="Run config-driven manta APF/LMPC.")
-    parser.add_argument("--config", default=DEFAULT_CONFIG_PATH.name)
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="YAML configuration (resume defaults to archived settings)",
+    )
+    parser.add_argument(
+        "--resume",
+        default=None,
+        metavar="RUN_DIR_OR_CHECKPOINT",
+        help="continue from the last completed iteration of a saved run",
+    )
     parser.add_argument("--scenario", default=None)
-    parser.add_argument("--iterations", type=int, default=None)
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=None,
+        help="total LMPC iteration target, including completed iterations",
+    )
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--apf-max-steps", type=int, default=None)
     parser.add_argument("--dt", type=float, default=None)
@@ -30,7 +43,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--stop-file",
-        default="STOP_RUN",
-        help="file path that stops the run when created",
+        default=None,
+        help="file path that stops the run when created (default: OUTPUT_DIR/STOP_RUN)",
     )
     return parser.parse_args(argv)

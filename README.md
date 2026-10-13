@@ -39,6 +39,7 @@ and belief-retry equations are collected in `docs/harbor_control_math.md`.
 - `scripts/experiments/`: manta/harbor study orchestration and matched trials.
 - `scripts/metrics/`, `scripts/plotting/`: diagnostics, plots, and GIFs.
 - `scripts/reporting/`: stable summary, CSV, plot, and animation artifact generation.
+- `scripts/storage/`: versioned, atomic simulation checkpoints.
 - `results/`: generated outputs.
 
 See `scripts/README.md` and `docs/code_architecture.md` for module ownership.
@@ -260,6 +261,16 @@ Equivalent sweep summary:
 `python3 run.py --config config/manta.yaml --output-dir results/debug_run`
 
 Outputs are written under the output root set in `config/manta.yaml`.
+Every completed APF/LMPC iteration also saves a recovery checkpoint. Continue
+an interrupted run or extend a baseline without regenerating its safe seed:
+
+`python run.py --resume results/tmp/my_manta_run --iterations 2 --no-video`
+
+The iteration count is the total target. Resume uses the archived effective
+settings; fresh runs refuse to overwrite a nonempty output directory. See
+[recoverable Manta runs](docs/manta_runs.md) for stop signals, output meanings,
+and checkpoint compatibility.
+
 `summary.json` records every candidate iteration in `validation_by_iteration`.
 `selected_iteration` is the APF or LMPC iteration used for the final plots.
 `solver_clean: false` means the run used a solver fallback or an execution-time

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields, replace
+from dataclasses import asdict, dataclass, fields, replace
 from pathlib import Path
 from typing import Any, get_args, get_origin, get_type_hints
 
@@ -61,6 +61,21 @@ def load_project_config(
     with path.open("r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
 
+    return project_config_from_mapping(raw, scenario_name=scenario_name)
+
+
+def project_config_from_mapping(
+    raw: dict[str, Any],
+    *,
+    scenario_name: str | None = None,
+) -> ProjectConfig:
+    """Materialize YAML or an archived effective configuration."""
+    if not isinstance(raw, dict):
+        raise ValueError("project config must be a mapping")
+    for section in ("run", "scenario", "dynamics", "apf", "lmpc", "output", "plots"):
+        if section in raw and not isinstance(raw[section], dict):
+            raise ValueError(f"{section} config must be a mapping")
+
     run_data = raw.get("run", {})
     selected_scenario = scenario_name or run_data.get("scenario")
     if not selected_scenario:
@@ -96,6 +111,37 @@ def load_project_config(
         quiet=bool(run_data.get("quiet", False)),
         raw=raw,
     )
+
+
+def project_config_to_mapping(config: ProjectConfig) -> dict[str, Any]:
+    """Export actual runtime settings, including overrides, without stale YAML."""
+    scenario = config.scenario
+    obstacle = asdict(scenario.obstacle)
+    if obstacle["physical_radius"] is None:
+        del obstacle["physical_radius"]
+    return {
+        "run": {
+            "scenario": scenario.name,
+            "make_video": config.make_video,
+            "quiet": config.quiet,
+        },
+        "scenario": {
+            scenario.name: {
+                "starts": scenario.starts.tolist(),
+                "goals": scenario.goals.tolist(),
+                "safety_distance": scenario.safety_distance,
+                "obstacle": obstacle,
+            }
+        },
+        "dynamics": asdict(config.dynamics),
+        "apf": asdict(config.apf),
+        "lmpc": asdict(config.lmpc),
+        "output": {
+            "root_dir": str(config.output.root_dir),
+            "run_prefix": config.output.run_prefix,
+        },
+        "plots": asdict(config.plots),
+    }
 
 
 def list_config_scenarios(config_path: str | Path = DEFAULT_CONFIG_PATH) -> list[str]:

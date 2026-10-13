@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from typing import Any
 
 import numpy as np
 
@@ -115,6 +116,13 @@ class MantaLMPCRunResult:
     learned_by_iteration: list[bool]
     validation_by_iteration: list[TrajectoryValidation]
     selected_iteration: int | None
+    initial_controls: dict[int, np.ndarray] | None = None
+    learning_settings: dict[str, Any] | None = None
+
+    @property
+    def completed_iterations(self) -> int:
+        """Number of completed LMPC iterations, excluding the APF seed."""
+        return len(self.histories) - 1
 
     @property
     def final_history(self) -> dict[int, np.ndarray]:

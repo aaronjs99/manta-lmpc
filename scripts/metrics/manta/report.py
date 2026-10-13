@@ -66,6 +66,7 @@ def prepare_manta_report(
         "scenario": scenario.name,
         "config": str(Path(config_path).resolve()),
         "iterations": lmpc.iterations,
+        "completed_iterations": result.completed_iterations,
         "dt": lmpc.dt,
         "prediction_horizon": lmpc.prediction_horizon,
         "k_hull": lmpc.k_hull,
