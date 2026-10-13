@@ -1,12 +1,12 @@
-"""Multi-agent manta simulation environment."""
+"""Simulation / environment."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 import numpy as np
-
-from scripts.dynamics import MantaDynamicsConfig, rk4_step_np
+from scripts.configuration.manta_dynamics import MantaDynamicsConfig
+from scripts.dynamics.manta import rk4_step_np
 
 
 @dataclass(frozen=True)
@@ -85,6 +85,24 @@ class MultiMantaRayEnv:
                 self.config.dynamics,
             )
         self._state = next_state
+        self._step_idx += 1
+        return self.state
+
+    def advance_with_transition(self, next_state: np.ndarray) -> np.ndarray:
+        """Commit controller-proposed states after safety filtering.
+
+        LMPC's optimizer returns the predicted one-step plant transition, and
+        the safety filter may adjust that transition. This boundary records the
+        accepted state without reintegrating the controls and changing solver
+        output semantics.
+        """
+        accepted_state = _as_manta_array(next_state)
+        if accepted_state.shape != self._state.shape:
+            raise ValueError(
+                f"expected transition state shape {self._state.shape}, "
+                f"got {accepted_state.shape}"
+            )
+        self._state = accepted_state.copy()
         self._step_idx += 1
         return self.state
 

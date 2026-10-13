@@ -1,5 +1,11 @@
-"""Serialization and artifact generation for simulation and LMPC runs."""
+"""Reporting."""
 
-from .manta import MantaRunReport, prepare_manta_report, save_manta_run_report
+from __future__ import annotations
+
+from scripts.reporting.manta import (
+    MantaRunReport,
+    prepare_manta_report,
+    save_manta_run_report,
+)
 
 __all__ = ["MantaRunReport", "prepare_manta_report", "save_manta_run_report"]

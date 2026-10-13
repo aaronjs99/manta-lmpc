@@ -1,7 +1,13 @@
-"""Plotting package for rollout diagnostics."""
+"""Plotting."""
 
-from .trajectories import plot_pairwise_distances, plot_trajectories
-from .manta import plot_cost_decrease, plot_learning_progression, save_manta_animation
+from __future__ import annotations
+
+from scripts.plotting.manta import (
+    plot_cost_decrease,
+    plot_learning_progression,
+    save_manta_animation,
+)
+from scripts.plotting.trajectories import plot_pairwise_distances, plot_trajectories
 
 __all__ = [
     "plot_cost_decrease",

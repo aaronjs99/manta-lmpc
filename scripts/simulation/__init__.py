@@ -1,12 +1,15 @@
-"""Simulation environments and scenarios for the multi-agent LMPC project."""
+"""Simulation."""
 
-from .environment import (
+from __future__ import annotations
+
+from scripts.contracts.manta import Scenario, StaticObstacle
+from scripts.simulation.environment import (
     MantaEnvConfig,
     MultiMantaRayEnv,
     ThreeMantaRayEnv,
     manta_rollout,
 )
-from .scenarios import Scenario, StaticObstacle, get_scenario, list_scenarios
+from scripts.simulation.scenarios import get_scenario, list_scenarios
 
 __all__ = [
     "MantaEnvConfig",

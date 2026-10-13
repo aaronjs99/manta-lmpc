@@ -1,18 +1,32 @@
-"""Diagnostic overlays shared by static trajectory plots."""
+"""Plotting / diagnostics."""
 
 from __future__ import annotations
 
+from scripts.plotting._backend import configure_matplotlib
+
+configure_matplotlib()
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
-from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
+from scripts.algorithms.geometry import (
+    segment_pairwise_distances,
+    segment_point_distances,
+)
 
-from scripts.metrics import segment_pairwise_distances, segment_point_distances
-from scripts.simulation import StaticObstacle
+if TYPE_CHECKING:
+    from matplotlib import pyplot as plt
+    from scripts.contracts.manta import StaticObstacle
+
 
 OBSTACLE_VIOLATION_COLOR = "crimson"
+
+
 PAIRWISE_VIOLATION_COLOR = "black"
+
+
 PADDING_COLOR = "darkorange"
 
 
@@ -30,8 +44,7 @@ class TrajectoryDiagnostics:
 def to_position_history(run: dict[int, np.ndarray]) -> dict[int, np.ndarray]:
     """Return per-agent ``(x, y)`` arrays from one saved iteration history."""
     return {
-        agent: np.asarray(states, dtype=float)[:, :2]
-        for agent, states in run.items()
+        agent: np.asarray(states, dtype=float)[:, :2] for agent, states in run.items()
     }
 
 
@@ -59,9 +72,7 @@ def compute_diagnostics(
                 count = min(len(pos_i), len(pos_j))
                 if count == 0:
                     continue
-                distances = segment_pairwise_distances(
-                    pos_i[:count], pos_j[:count]
-                )
+                distances = segment_pairwise_distances(pos_i[:count], pos_j[:count])
                 min_pairwise = min(min_pairwise, float(np.min(distances)))
                 pairwise_violations += int(np.sum(distances < safety_distance))
 

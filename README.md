@@ -25,24 +25,34 @@ and belief-retry equations are collected in `docs/harbor_control_math.md`.
 6. Select the latest APF or LMPC iteration that reaches all goals without pairwise or obstacle violations.
 
 ## Layout
-- `run.py`: root command dispatcher.
+- `run.py`: compatibility wrapper for the single command dispatcher.
+- `scripts/run.py`: sole launcher inside `scripts/`; accepts the same commands.
 - `config/`: YAML runtime configuration.
 - `docs/`: research contribution notes and experiment roadmap.
-- `scripts/dynamics/`: manta dynamics and RK4 integration.
-- `scripts/simulation/`: manta environment and scenario dataclasses.
-- `scripts/harbor/`: independent UGV/USV/ROV dynamics, domains, communication,
-  and heterogeneous simulation.
-- `scripts/learning/`: APF initialization, safe-set sampling, SVM hyperplanes, runner.
-- `scripts/mpc/`: CasADi LMPC agent builder.
+- `scripts/cli/`: lazy command registry, dispatch, and argument parsing.
+- `scripts/configuration/`: validated settings, YAML loading, and shared paths.
+- `scripts/algorithms/`: control policies, safe sets, estimation, and SLAM.
+- `scripts/dynamics/`: manta, UGV, USV, and ROV numerical/symbolic dynamics.
+- `scripts/mpc/`: CasADi/IPOPT optimizer and controller implementations.
+- `scripts/communication/`: seeded message delivery and network effects.
+- `scripts/simulation/`: rollout execution, synthetic sensing, and learning loops.
+- `scripts/experiments/`: manta/harbor study orchestration and matched trials.
 - `scripts/metrics/`, `scripts/plotting/`: diagnostics, plots, and GIFs.
 - `scripts/reporting/`: stable summary, CSV, plot, and animation artifact generation.
-- `tests/`: fast regression tests for evaluation, safe-set admission, priority, and warm starts.
 - `results/`: generated outputs.
+
+See `scripts/README.md` and `docs/code_architecture.md` for module ownership.
 
 ## Setup
 `python3 -m pip install -r requirements.txt`
 
 ## Run
+List commands without importing numerical or plotting dependencies:
+
+`python3 run.py --help`
+
+The same commands work with `python3 scripts/run.py` or `python3 -m scripts.run`.
+
 Full manta LMPC using `config/manta.yaml`:
 
 `python3 run.py`
@@ -58,10 +68,6 @@ Zero-control manta sanity check:
 Compact benchmark sweep, APF-only by default:
 
 `python3 run.py sweep`
-
-Regression suite, including one clean physical harbor MPC/LMPC solve:
-
-`python3 run.py test`
 
 Heterogeneous harbor communication ablation (writes no file by default):
 

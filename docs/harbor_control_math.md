@@ -73,7 +73,7 @@ x_(t+1) = drift(f_i(x_t, diag(alpha_hat_i,k) u_t, dt), r_hat_i,k, dt).
 ```
 
 For marine agents, `drift` adds `dt r_hat` to predicted position. The finite
-horizon objective implemented in `scripts/harbor/mpc.py` is
+horizon objective implemented in `scripts/mpc/harbor/optimizer.py` is
 
 ```text
 J_i = sum_(t=0)^(N-1) [
@@ -305,7 +305,7 @@ metric cannot conceal failure in another.
 ## 11. Robust fixed-lag factor graph
 
 The EKF is retained as a directly comparable baseline. The experimental
-smoother in `scripts/harbor/factor_graph.py` stores a window of platform poses
+smoother in `scripts/algorithms/estimation/factor_graph.py` stores a window of platform poses
 and unknown beacon positions. It minimizes prior, odometry, robust range,
 attitude, and beacon-prior residuals. A range residual is
 

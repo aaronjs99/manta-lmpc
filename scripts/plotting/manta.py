@@ -1,17 +1,18 @@
-"""Plots and animations for manta LMPC runs."""
+"""Plotting / manta."""
 
 from __future__ import annotations
 
-from ._backend import configure_matplotlib
+from scripts.plotting._backend import configure_matplotlib
 
 configure_matplotlib()
+
+from typing import TYPE_CHECKING
+
 import numpy as np
-from matplotlib import animation, pyplot as plt
-
-from scripts.metrics import cost_by_iteration
-from scripts.simulation import StaticObstacle
-
-from .diagnostics import (
+from matplotlib import animation
+from matplotlib import pyplot as plt
+from scripts.metrics.evaluation import cost_by_iteration
+from scripts.plotting.diagnostics import (
     add_diagnostic_box,
     add_highlighted_segments,
     add_status_markers,
@@ -19,13 +20,16 @@ from .diagnostics import (
     legend_label,
     to_position_history,
 )
-from .primitives import (
+from scripts.plotting.primitives import (
     add_obstacle_layers,
     agent_color,
     goal_tolerance_patch,
     prepare_output_path,
     set_workspace_limits,
 )
+
+if TYPE_CHECKING:
+    from scripts.contracts.manta import StaticObstacle
 
 
 def plot_learning_progression(
@@ -116,9 +120,7 @@ def plot_learning_progression(
         ax.plot(g[agent, 0], g[agent, 1], marker="*", color=color, markersize=15)
         if goal_tolerance is not None:
             ax.add_patch(
-                goal_tolerance_patch(
-                    g[agent], goal_tolerance, color, linewidth=1.2
-                )
+                goal_tolerance_patch(g[agent], goal_tolerance, color, linewidth=1.2)
             )
 
     final_positions = to_position_history(histories[-1])
@@ -206,9 +208,7 @@ def save_manta_animation(
     max_frames = max(len(histories[agent]) for agent in range(num_agents))
 
     fig = plt.figure(figsize=(10, 14))
-    gs = fig.add_gridspec(
-        num_agents + 1, 2, height_ratios=[3] + [1] * num_agents
-    )
+    gs = fig.add_gridspec(num_agents + 1, 2, height_ratios=[3] + [1] * num_agents)
 
     ax_top = fig.add_subplot(gs[0, :])
     set_workspace_limits(ax_top)
@@ -240,9 +240,7 @@ def save_manta_animation(
         ax_top.plot(g[agent, 0], g[agent, 1], marker="*", color=color, markersize=15)
         if goal_tolerance is not None:
             ax_top.add_patch(
-                goal_tolerance_patch(
-                    g[agent], goal_tolerance, color, linewidth=1.2
-                )
+                goal_tolerance_patch(g[agent], goal_tolerance, color, linewidth=1.2)
             )
         lines.append(line)
         dots.append(dot)

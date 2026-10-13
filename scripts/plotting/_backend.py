@@ -1,4 +1,4 @@
-"""Matplotlib backend setup shared by plotting utilities."""
+"""Plotting /  backend."""
 
 from __future__ import annotations
 

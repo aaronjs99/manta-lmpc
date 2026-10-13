@@ -503,9 +503,9 @@ the slowest agent in the prior sequential seed to `199` steps, with per-agent
 first hits of `199/189/147`. Independent swept validation reports `0.639 m`
 minimum pairwise separation against the configured `0.600 m` requirement and
 `0.932 m` minimum clearance outside the inflated obstacle. The complete
-seven-state/control sequence is also replay-checked one transition at a time in
-the test suite. The two-agent crossover remains valid and shortens to `155`
-steps, demonstrating that compact staging is not triangle-specific.
+seven-state/control sequence is also replay-checked one transition at a time.
+The two-agent crossover remains valid and shortens to `155` steps, demonstrating
+that compact staging is not triangle-specific.
 
 The compact initializer does not, by itself, solve the triangle LMPC problem.
 In a 60-step controlled probe, the learned rollout remains swept-safe and

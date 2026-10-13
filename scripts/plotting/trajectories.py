@@ -1,17 +1,16 @@
-"""Central plotting utilities for multi-agent rollouts."""
+"""Plotting / trajectories."""
 
 from __future__ import annotations
 
-from ._backend import configure_matplotlib
-
-import numpy as np
+from scripts.plotting._backend import configure_matplotlib
 
 configure_matplotlib()
+
+from typing import TYPE_CHECKING
+
+import numpy as np
 from matplotlib import pyplot as plt
-
-from scripts.simulation import StaticObstacle
-
-from .diagnostics import (
+from scripts.plotting.diagnostics import (
     add_diagnostic_box,
     add_highlighted_segments,
     add_status_markers,
@@ -19,13 +18,16 @@ from .diagnostics import (
     legend_label,
     tensor_to_position_history,
 )
-from .primitives import (
+from scripts.plotting.primitives import (
     add_obstacle_layers,
     agent_color,
     goal_tolerance_patch,
     prepare_output_path,
     set_workspace_limits,
 )
+
+if TYPE_CHECKING:
+    from scripts.contracts.manta import StaticObstacle
 
 
 def plot_trajectories(
@@ -155,11 +157,7 @@ def plot_pairwise_distances(
 
 
 def _pair_labels(num_agents: int) -> list[str]:
-    return [
-        f"d({i},{j})"
-        for i in range(num_agents)
-        for j in range(i + 1, num_agents)
-    ]
+    return [f"d({i},{j})" for i in range(num_agents) for j in range(i + 1, num_agents)]
 
 
 def _agent_count_from_pair_count(pair_count: int) -> int:

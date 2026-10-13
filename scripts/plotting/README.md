@@ -1,6 +1,12 @@
 # Plotting
 
-Central plotting utilities for manta rollout diagnostics.
+Rendering only: figures and animations consume already-computed rollout data.
+
+Manta plotting modules remain directly in this package. `harbor/` separates
+trajectory animations, learning, mismatch, actuator faults, generalization,
+prediction, recovery, uncertainty, and localization figures. Shared colors and
+drawing primitives live in `harbor/common.py`.
+Numerical summaries belong in `scripts/metrics/`, not in plotting modules.
 
 Current outputs:
 - 2D trajectories with start/goal markers.

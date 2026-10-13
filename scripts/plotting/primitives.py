@@ -1,15 +1,19 @@
-"""Shared visual primitives for static and animated manta diagnostics."""
+"""Plotting / primitives."""
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from ._backend import configure_matplotlib
+from scripts.plotting._backend import configure_matplotlib
 
 configure_matplotlib()
-from matplotlib import patches, pyplot as plt
 
-from scripts.simulation import StaticObstacle
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from matplotlib import patches
+
+if TYPE_CHECKING:
+    from matplotlib import pyplot as plt
+    from scripts.contracts.manta import StaticObstacle
 
 
 AGENT_COLORS = (
@@ -62,7 +66,10 @@ def add_obstacle_layers(
             zorder=1,
         )
     )
-    if obstacle.physical_radius is not None and obstacle.physical_radius < obstacle.radius:
+    if (
+        obstacle.physical_radius is not None
+        and obstacle.physical_radius < obstacle.radius
+    ):
         ax.add_patch(
             patches.Circle(
                 obstacle.center,

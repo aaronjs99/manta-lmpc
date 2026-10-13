@@ -1,12 +1,11 @@
-"""Run-level metrics for multi-agent trajectory rollouts."""
+"""Metrics / core."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 import numpy as np
-
-from .geometry import swept_pairwise_distances
+from scripts.algorithms.geometry import swept_pairwise_distances
 
 
 @dataclass(frozen=True)

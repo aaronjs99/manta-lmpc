@@ -1,61 +1,15 @@
-"""Reusable validation and cost evaluation for multi-agent trajectories."""
+"""Metrics / evaluation."""
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-
 import numpy as np
-
-from .geometry import segment_point_distances, swept_pairwise_distances
-
+from scripts.algorithms.geometry import (
+    segment_point_distances,
+    swept_pairwise_distances,
+)
+from scripts.contracts.manta import TrajectoryValidation
 
 History = dict[int, list[np.ndarray] | np.ndarray]
-
-
-@dataclass(frozen=True)
-class TrajectoryValidation:
-    """Safety, completion, and solver-status checks for one trajectory."""
-
-    all_goals_reached: bool
-    min_pairwise_distance: float
-    pairwise_violation_count: int
-    min_obstacle_clearance: float
-    obstacle_violation_count: int
-    fallback_count: int
-    safety_intervention_count: int
-
-    @property
-    def safe(self) -> bool:
-        """Return whether pairwise and obstacle constraints were satisfied."""
-        return (
-            self.pairwise_violation_count == 0
-            and self.obstacle_violation_count == 0
-        )
-
-    @property
-    def valid(self) -> bool:
-        """Return whether the trajectory is complete and safe."""
-        return self.all_goals_reached and self.safe
-
-    @property
-    def usable_for_learning(self) -> bool:
-        """Return whether the trajectory may be admitted to the safe set."""
-        return self.valid
-
-    @property
-    def solver_clean(self) -> bool:
-        """Return whether no fallback or safety intervention was used."""
-        return self.fallback_count == 0 and self.safety_intervention_count == 0
-
-    def to_dict(self) -> dict[str, bool | float | int]:
-        """Serialize validation metrics for run summaries."""
-        return {
-            "valid": self.valid,
-            "safe": self.safe,
-            "solver_clean": self.solver_clean,
-            "usable_for_learning": self.usable_for_learning,
-            **asdict(self),
-        }
 
 
 def history_to_tensor(history: History) -> tuple[list[int], np.ndarray]:
@@ -147,9 +101,7 @@ def cost_by_iteration(
 ) -> dict[int, list[int]]:
     """Return each agent's first goal-tolerance hit step per iteration."""
     goals_array = np.asarray(goals, dtype=float)
-    costs: dict[int, list[int]] = {
-        agent: [] for agent in range(goals_array.shape[0])
-    }
+    costs: dict[int, list[int]] = {agent: [] for agent in range(goals_array.shape[0])}
     for history in histories:
         for agent in costs:
             trajectory = np.asarray(history[agent], dtype=float)

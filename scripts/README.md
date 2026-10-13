@@ -1,34 +1,56 @@
-# Scripts Package
+# Application Code
 
-This package contains both runnable entry points and reusable modules.
+`run.py` is the only launcher in this directory. Other code lives in packages by
+responsibility. `scripts` is a Python namespace package with no `__init__.py`.
 
-## Entry Points
-- `run_manta_lmpc.py`: full APF + LMPC workflow, driven by `config/manta.yaml`.
-- `run_baseline_mpc.py`: APF iteration-0 baseline shortcut.
-- `run_sanity_checks.py`: zero-control manta simulation check.
-- `run_sweep.py`: compact APF/LMPC benchmark table with wall time, selected and
-  latest solver status, safety metrics, and no plot generation.
-- `run_tests.py`: dependency-light unit-test discovery.
+## Run
 
-Prefer the root dispatcher:
+These entry points use the same dispatcher and accept the same commands:
 
-`python run.py`
+```sh
+python run.py --help
+python scripts/run.py --help
+python -m scripts.run --help
+python scripts/run.py baseline
+python scripts/run.py harbor --help
+```
 
-`python run.py baseline`
+Inside this directory, use `python run.py --help`. Default YAML files resolve
+relative to the repository. Relative output paths retain their existing
+meaning: relative to the invoking working directory.
 
-`python run.py sanity`
+`sanity` is a zero-control simulation diagnostic.
 
-`python run.py sweep`
+## Responsibilities
 
-`python run.py test`
+| Package | Owns |
+| --- | --- |
+| `cli/` | Lazy command registry, dispatch, argument parsing |
+| `configuration/` | Validated settings, YAML loaders, paths, study labels |
+| `algorithms/` | APF, safe sets, adaptive estimation, EKF/SLAM, guidance |
+| `dynamics/` | Numerical and symbolic plant models |
+| `mpc/` | CasADi/IPOPT optimizer and controller implementations |
+| `communication/` | Seeded message delivery, delay, dropout, TTL |
+| `simulation/` | Plant stepping, accepted transition commits, synthetic sensing |
+| `experiments/` | Study orchestration, learning-loop and matched-trial execution |
+| `metrics/` | Scoring, paired statistics, confirmation gates |
+| `plotting/` | Figures and animations from computed data |
+| `reporting/` | Artifact serialization and presentation |
 
-## Modules
-- `dynamics/`: shared manta/CPG dynamics.
-- `simulation/`: environment and scenario dataclasses.
-- `learning/`: staged APF safe sets, SVM hyperplanes, policies, run loop.
-- `mpc/`: CasADi/IPOPT LMPC optimizer.
-- `metrics/`: shared history conversion, rollout validation, costs, and metrics.
-- `plotting/`: trajectory, learning-progress, cost, and GIF outputs.
-- `reporting/`: reusable summary preparation and run artifact serialization.
+Algorithms do not depend on launchers, experiment execution, plotting, or
+reporting. Metrics do not import experiment launchers. Plotting does not execute
+studies. Shared helper implementations have a single owner.
 
-Runtime constants should live in YAML under `config/` unless they are structural code assumptions.
+## Adding a Study
+
+1. Put orchestration in `experiments/manta/` or `experiments/harbor/`.
+2. Put option parsing in the corresponding `cli/arguments/` package; accept `argv`.
+3. Reuse algorithms, models, and execution primitives from their owning packages.
+4. Keep scoring in `metrics/`, rendering in `plotting/`, and serialization in
+   `reporting/`.
+5. Register the command in `cli/registry.py`; do not add a top-level launcher.
+6. Keep runtime settings in `config/` YAML. Preserve development, holdout, and
+   confirmation seeds and thresholds.
+
+See [the architecture guide](../docs/code_architecture.md) for the migration map.
+Successful simulation does not establish physical readiness.
